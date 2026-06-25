@@ -14,7 +14,7 @@ function MapPage() {
           accessToken={token}
           value={value}
           onChange={(val) => setValue(val)}
-          placeholder="Search for houses in Georgia"
+          placeholder="Find the perfect county"
           options={{
             proximity: [-83.51424, 32.99815],
             bbox: [-85.60518, 30.35538, -80.75488, 34.98466],
@@ -27,7 +27,7 @@ function MapPage() {
         initialViewState={{
           longitude: -83.51424,
           latitude: 32.99815,
-          zoom: 12,
+          zoom: 6.5,
         }}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
