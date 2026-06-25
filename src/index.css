@@ -1,1 +1,15 @@
 @import "tailwindcss";
+
+body{
+    margin: 0;
+}
+
+input[role="combobox"] {
+  font-size: 1.25rem !important;
+  height: 4rem !important;
+  width: 29vw !important;
+}
+
+body {
+  font-family: 'Playfair Display', sans-serif;
+}

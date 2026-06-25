@@ -1,46 +1,79 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import Slider from "rc-slider";
-import "rc-slider/assets/index.css";
+import { SearchBox } from "@mapbox/search-js-react";
+import mapboxgl from "mapbox-gl";
 
 function HomePage() {
-  const [range, setRange] = useState([100000, 500000]);
+  const [value, setValue] = useState("");
   const navigate = useNavigate();
+  const token = import.meta.env.VITE_MAPBOX_TOKEN;
+  const [coords, setCoords] = useState<{lat: number, lng: number} | null>(null);
+
+
 
   return (
     <>
-      <div className="flex items-center justify-center text-6xl mt-20">
-        <h1>HOME LOCATION FINDER</h1>
+    <div
+      className="min-h-screen overflow-hidden relative"
+      style={{
+        backgroundImage: "url('mountain.jpg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+
+        
+      }}
+      
+    >
+      <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1}} />
+      
+      <div className="h-20 bg-white flex items-center w-screen " style={{zIndex: 2, position: "relative"}}>
+        <h1 className="text-4xl pl-10"> HomeBound.</h1>
       </div>
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="bg-white rounded-xl p-6 shadow-md w-96 flex flex-col">
-          <h2 className="text-lg font-medium mb-4">Price Range</h2>
-          <div className="flex justify-between mb-4">
-            <span className="text-gray-500 text-sm">
-              Min: <strong>${range[0].toLocaleString()}</strong>
-            </span>
-            <span className="text-gray-500 text-sm">
-              Max: <strong>${range[1].toLocaleString()}</strong>
-            </span>
-          </div>
 
-          <Slider
-            range
-            min={0}
-            max={1000000}
-            step={1000}
-            value={range}
-            onChange={(val) => setRange(val as number[])}
-          />
 
-          <button
-            onClick={() => navigate("/map")}
-            className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-          >
-            Search Areas
-          </button>
+
+      <div className=" text-6xl  absolute" style={{ top: "10vh", left: "50vw", zIndex: 2}}>
+        <h1 className="text-white" style={{ fontSize: "10vw"}}>Home is where the heart is.</h1>
+        <p className="text-white" >Find your place.</p>
+      </div>
+      
+        <div className="bg-white shadow-md absolute rounded-lg p-5" style={{ top: "50vh", left: "5vw", zIndex: 2, width: "40vw", height: ""}}>
+        <h1 className="text-5xl font-medium "> Where do you want to live?</h1>
+        <div className="flex flex-col items-center justify-center gap-4 mt-5">
+
+        <div className="flex items-center gap-2 " style={{ fontSize: "2vw" }}>
+        <SearchBox
+          accessToken={token}
+          mapboxgl={mapboxgl}
+          value={value}
+          onChange={(val) => setValue(val)}
+          onRetrieve={(result) => {
+            console.log("retrieved:", result);
+            const [lng, lat] = result.features[0].geometry.coordinates;
+            setCoords({ lat, lng });
+            }}
+
+          placeholder="Search for a county or area"
+        />
+        <button
+          onClick={() => {
+            if (coords) {
+              navigate(`/map?lat=${coords.lat}&lng=${coords.lng}`);
+            } else {
+              navigate("/map");
+            }
+          }}
+
+          className=" bg-black text-white p-3 rounded-lg hover:bg-blue-700 text-2xl" style={{ fontSize: "2vw", width: "8vw"}}
+        >
+          Search 
+        </button>
         </div>
       </div>
+      </div>
+    </div>
+
+    
     </>
   );
 }
