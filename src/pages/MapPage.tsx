@@ -1,31 +1,15 @@
 import { useState, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
-
-import Map, { Marker, NavigationControl, Popup } from "react-map-gl/mapbox";
-
-import type { MapRef } from "react-map-gl/mapbox";
+import { useSearchParams, useNavigate } from "react-router-dom";
+import Map, { NavigationControl, Popup } from "react-map-gl/mapbox";
+import type { MapRef, MapMouseEvent } from "react-map-gl/mapbox";
 import { SearchBox } from "@mapbox/search-js-react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 
-
-
-
-function MapPage() {
-  const [value, setValue] = useState("");
-  const [mapInstance, setMapInstance] = useState<mapboxgl.Map>();
-  const mapRef = useRef<MapRef>(null);
-  const token = import.meta.env.VITE_MAPBOX_TOKEN;
-  const [showFilters, setShowFilters] = useState(false);
-  const [population, setPopulation] = useState("");
-  const [number, setNumber] = useState<number | string>("");
-  const [range, setRange] = useState([100000, 500000]);
-  const [searchParams] = useSearchParams();
-  const lat = Number(searchParams.get("lat")) || 32.99815;
-  const lng = Number(searchParams.get("lng")) || -83.51424;
-const [popupInfo, setPopupInfo] = useState<{
+// Shape of the data shown in the popup when a county is clicked
+type PopupInfo = {
   longitude: number;
   latitude: number;
   county: string;
@@ -33,56 +17,92 @@ const [popupInfo, setPopupInfo] = useState<{
   medianRent: number;
   medianHomeValue: number;
   medianIncome: number;
-} | null>(null);
+};
 
+function MapPage() {
+  const token = import.meta.env.VITE_MAPBOX_TOKEN;
+  const mapRef = useRef<MapRef>(null);
+  const [mapInstance, setMapInstance] = useState<mapboxgl.Map>();
+  const navigate = useNavigate();
 
+  // Read lat/lng from the URL (set by the search on HomePage)
+  const [searchParams] = useSearchParams();
+  const lat = Number(searchParams.get("lat")) || 32.99815;
+  const lng = Number(searchParams.get("lng")) || -83.51424;
 
-async function applyFilters() {
-  try{
-  
-  const minIncome = number ? Number(number) - 15000 : "";
-  const maxIncome = number ? Number(number) + 15000 : "";
+  // Search box text
+  const [value, setValue] = useState("");
 
-  const url = `http://localhost:3000/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
+  // Filter panel visibility and values
+  const [showFilters, setShowFilters] = useState(false);
+  const [population, setPopulation] = useState("");
+  const [number, setNumber] = useState<number | string>("");
+  const [range, setRange] = useState([100000, 500000]);
 
- 
+  // Info shown in the popup when the user clicks a county
+  const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
 
-  const response = await fetch(url);
-  const data = await response.json();
-   console.log("url:", url)
-console.log("results:", data.results)
+  // Sends filter values to the backend and narrows which counties are shown on the map
+  async function applyFilters() {
+    try {
+      const minIncome = number ? Number(number) - 15000 : "";
+      const maxIncome = number ? Number(number) + 15000 : "";
 
-  const names = data.results.map((c: { areaName: string }) => c.areaName);
+      const url = `http://localhost:3000/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
 
-  if (mapInstance) {
-    mapInstance.setFilter("big info", ["in", ["get", "areaName"], ["literal", names]]);
+      const response = await fetch(url);
+      const data = await response.json();
+
+      // Only show counties whose names are in the filtered results
+      const names = data.results.map((c: { areaName: string }) => c.areaName);
+      if (mapInstance) {
+        mapInstance.setFilter("big info", ["in", ["get", "areaName"], ["literal", names]]);
+      }
+
+      setShowFilters(false);
+    } catch (error) {
+      console.log("error:", error);
+    }
   }
 
-  setShowFilters(false);
-}catch(error){
-  console.log("error:", error)
-} 
-}
+  // Resets all filters and shows every county again
+  function clearFilters() {
+    setPopulation("");
+    setNumber("");
+    setRange([0, 10000000]);
+    if (mapInstance) {
+      mapInstance.setFilter("big info", null);
+    }
+  }
 
-function handleMapClick(e: any) {
-  const feature = e.features && e.features[0];
-  if (!feature) return;
-  const props = feature.properties;
-  setPopupInfo({
-    longitude: e.lngLat.lng,
-    latitude: e.lngLat.lat,
-    county: props.county,
-    population: props.population,
-    medianRent: props.medianRent,
-    medianHomeValue: props.medianHomeValue,
-    medianIncome: props.medianIncome,
-  });
-}
+  // Opens a popup with county info when the user clicks on the map
+  function handleMapClick(e: MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] }) {
+    const feature = e.features && e.features[0];
+    if (!feature) return;
+    const props = feature.properties;
+    setPopupInfo({
+      longitude: e.lngLat.lng,
+      latitude: e.lngLat.lat,
+      county: props.county,
+      population: props.population,
+      medianRent: props.medianRent,
+      medianHomeValue: props.medianHomeValue,
+      medianIncome: props.medianIncome,
+    });
+  }
 
-
+  // Saves the currently open popup's county to localStorage favorites
+  function saveToFavorites() {
+    if (!popupInfo) return;
+    const existing = JSON.parse(localStorage.getItem("favorites") || "[]");
+    existing.push(popupInfo);
+    localStorage.setItem("favorites", JSON.stringify(existing));
+  }
 
   return (
     <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+
+      {/* Top bar: search box, Filters button, Favorites button */}
       <div
         style={{
           position: "absolute",
@@ -100,6 +120,37 @@ function handleMapClick(e: any) {
           marker
           value={value}
           onChange={(val) => setValue(val)}
+          onRetrieve={(result) => {
+            const feature = result.features[0];
+            let minLng: number, minLat: number, maxLng: number, maxLat: number;
+
+            // Use the result's bounding box if available, otherwise build one from the center point
+            if (feature.bbox) {
+              [minLng, minLat, maxLng, maxLat] = feature.bbox;
+            } else {
+              const [lng, lat] = feature.geometry.coordinates;
+              const pad = 0.5;
+              minLng = lng - pad; maxLng = lng + pad;
+              minLat = lat - pad; maxLat = lat + pad;
+            }
+
+            // Filter the map to only show counties within this bounding box
+            if (mapInstance) {
+              mapInstance.setFilter("big info", ["within", {
+                type: "Feature",
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [[
+                    [minLng, minLat],
+                    [maxLng, minLat],
+                    [maxLng, maxLat],
+                    [minLng, maxLat],
+                    [minLng, minLat],
+                  ]],
+                },
+              }]);
+            }
+          }}
           placeholder="Search for houses in Georgia"
           options={{
             proximity: [-83.51424, 32.99815],
@@ -107,14 +158,16 @@ function handleMapClick(e: any) {
           }}
         />
 
-        <button
-          onClick={() => setShowFilters(!showFilters)}
-          className="bg-white px-3 py-1 rounded"
-        >
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
           Filters
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Favorites
         </button>
       </div>
 
+      {/* Filter panel — shown when user clicks the Filters button */}
       {showFilters && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-80">
           <h2 className="text-lg font-medium mb-4">Population</h2>
@@ -152,13 +205,13 @@ function handleMapClick(e: any) {
           </div>
 
           <div className="pb-4">
-            <h2 className="text-lg font-medium mb-4"> Yearly Income </h2>
+            <h2 className="text-lg font-medium mb-4">Yearly Income</h2>
             <input
               type="number"
               value={number}
               onChange={(e) => setNumber(e.target.value)}
               className="border rounded-lg px-3 py-2 w-full"
-            ></input>
+            />
           </div>
 
           <h2 className="text-lg font-medium mb-4">Price Range</h2>
@@ -186,42 +239,74 @@ function handleMapClick(e: any) {
           >
             Apply Filters
           </button>
+
+          <button
+            onClick={clearFilters}
+            className="mt-2 w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+          >
+            Clear Filters
+          </button>
         </div>
       )}
 
+      {/* The main map */}
       <Map
         ref={mapRef}
         mapboxAccessToken={token}
-        onLoad={() => setMapInstance(mapRef.current?.getMap())}
-        initialViewState={{
-          longitude: lng,
-          latitude: lat,
-          zoom: 8,
+        onLoad={() => {
+          const map = mapRef.current?.getMap();
+          setMapInstance(map);
+
+          // If the user arrived from a search, zoom into that area once the map is ready
+          const searchLat = Number(searchParams.get("lat"));
+          const searchLng = Number(searchParams.get("lng"));
+          if (searchLat && searchLng && map) {
+            const pad = 0.5;
+            map.once("idle", () => {
+              map.setFilter("big info", ["within", {
+                type: "Feature",
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [[
+                    [searchLng - pad, searchLat - pad],
+                    [searchLng + pad, searchLat - pad],
+                    [searchLng + pad, searchLat + pad],
+                    [searchLng - pad, searchLat + pad],
+                    [searchLng - pad, searchLat - pad],
+                  ]],
+                },
+              }]);
+            });
+          }
         }}
+        initialViewState={{ longitude: lng, latitude: lat, zoom: 8 }}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
         interactiveLayerIds={["big info", "big info again"]}
         onClick={handleMapClick}
       >
-        
         <NavigationControl position="top-right" />
-        {popupInfo && (
-  <Popup
-    longitude={popupInfo.longitude}
-    latitude={popupInfo.latitude}
-    onClose={() => setPopupInfo(null)}
-    closeOnClick={false}
-  >
-    <div>
-      <h3 style={{ fontWeight: "bold", marginBottom: 4 }}>{popupInfo.county}</h3>
-      <p>Population: {popupInfo.population.toLocaleString()}</p>
-      <p>Median Rent: ${popupInfo.medianRent.toLocaleString()}</p>
-      <p>Home Value: ${popupInfo.medianHomeValue.toLocaleString()}</p>
-      <p>Median Income: ${popupInfo.medianIncome.toLocaleString()}</p>
-    </div>
-  </Popup>
-)}
 
+        {/* Popup shown when a county is clicked */}
+        {popupInfo && (
+          <Popup
+            longitude={popupInfo.longitude}
+            latitude={popupInfo.latitude}
+            onClose={() => setPopupInfo(null)}
+            closeOnClick={false}
+          >
+            <div>
+              <h3 style={{ fontWeight: "bold", marginBottom: 4 }}>{popupInfo.county}</h3>
+              <p>Population: {popupInfo.population.toLocaleString()}</p>
+              <p>Median Rent: ${popupInfo.medianRent.toLocaleString()}</p>
+              <p>Home Value: ${popupInfo.medianHomeValue.toLocaleString()}</p>
+              <p>Median Income: ${popupInfo.medianIncome.toLocaleString()}</p>
+              <button onClick={saveToFavorites} className="border rounded-lg p-2">
+                Favorite
+              </button>
+            </div>
+          </Popup>
+        )}
       </Map>
     </div>
   );
