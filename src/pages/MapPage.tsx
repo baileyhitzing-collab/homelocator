@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-
+import { useState, useRef } from "react";
+import { createRoot } from 'react-dom/client';
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { NavigationControl, Popup } from "react-map-gl/mapbox";
 import type { MapRef, MapMouseEvent } from "react-map-gl/mapbox";
@@ -8,6 +8,15 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+
+// Choose which visual representation of data is showing - not finished
+function Choropleth() {
+  const [selectedMap, setSelectedMap] = useState('clear');
+
+  const handleChange = (event) => {
+    setSelectedMap(event.target.value);
+  };
+}
 
 // Shape of the data shown in the popup when a county is clicked
 type PopupInfo = {
@@ -19,30 +28,6 @@ type PopupInfo = {
   medianHomeValue: number;
   medianIncome: number;
 };
-
-
-
-type MapArea = {
-  areaName: string;
-  latitude: number | null;
-  longitude: number | null;
-};
-
-type RecommendationResult = {
-  areaName: string;
-  population: number;
-  medianIncome: number;
-  medianHomeValue: number;
-  medianRent: number;
-  highSchoolRate: number | null;
-  bachelorRate: number | null;
-  stateCode: string;
-  countyCode: string;
-  score: number;
-  recommendationReason: string[];
-};
-
-
 
 function MapPage() {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
@@ -67,18 +52,6 @@ function MapPage() {
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
 
-  
-  const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
-
-  const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
-
-  useEffect(() => {
-    fetch("http://localhost:3000/api/map-areas")
-      .then((res) => res.json())
-      .then((data) => setMapAreas(data));
-  }, []);
-
-
   // Sends filter values to the backend and narrows which counties are shown on the map
   async function applyFilters() {
     try {
@@ -96,43 +69,21 @@ function MapPage() {
         mapInstance.setFilter("big info", ["in", ["get", "areaName"], ["literal", names]]);
       }
 
-      // Also refresh the Top Picks list using the same search
-      const recUrl = `http://localhost:3000/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
-      const recResponse = await fetch(recUrl);
-      const recData = await recResponse.json();
-      setRecommendations(recData.results);
-
       setShowFilters(false);
     } catch (error) {
       console.log("error:", error);
     }
   }
 
-
-
-
   // Resets all filters and shows every county again
   function clearFilters() {
     setPopulation("");
     setNumber("");
     setRange([0, 10000000]);
-    setRecommendations([]);
     if (mapInstance) {
       mapInstance.setFilter("big info", null);
     }
   }
-
-
-
-  function flyToCounty(areaName: string) {
-    if (!mapInstance) return;
-    const area = mapAreas.find((m) => m.areaName === areaName);
-    if (area?.latitude && area?.longitude) {
-      mapInstance.flyTo({ center: [area.longitude, area.latitude], zoom: 10 });
-    }
-  }
-
-
 
   // Opens a popup with county info when the user clicks on the map
   function handleMapClick(e: MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] }) {
@@ -210,7 +161,7 @@ function MapPage() {
               }]);
             }
           }}
-          placeholder="Search for houses in Georgia"
+          placeholder="Search for counties in Georgia"
           options={{
             proximity: [-83.51424, 32.99815],
             bbox: [-85.60518, 30.35538, -80.75488, 34.98466],
@@ -305,30 +256,8 @@ function MapPage() {
           >
             Clear Filters
           </button>
-
         </div>
       )}
-
-      {recommendations.length > 0 && (
-  <div className="absolute top-0 right-0 h-full w-80 bg-white overflow-y-auto p-4 z-10">
-    <h2 className="text-lg font-medium mb-4">Top Picks</h2>
-    {recommendations.map((r, i) => (
-      <div
-        key={r.areaName}
-        className="border-b py-3 cursor-pointer"
-        onClick={() => flyToCounty(r.areaName)}
-      >
-        <div className="font-medium">#{i + 1} {r.areaName} — {r.score}</div>
-        <ul className="text-sm text-gray-600 list-disc pl-4">
-          {r.recommendationReason.map((reason, j) => (
-            <li key={j}>{reason}</li>
-          ))}
-        </ul>
-      </div>
-    ))}
-  </div>
-)}
-
 
       {/* The main map */}
       <Map
@@ -337,8 +266,6 @@ function MapPage() {
         onLoad={() => {
           const map = mapRef.current?.getMap();
           setMapInstance(map);
-          (window as any).map = map; // TEMP — for console debugging, remove after
-
 
           // If the user arrived from a search, zoom into that area once the map is ready
           const searchLat = Number(searchParams.get("lat"));
@@ -359,11 +286,10 @@ function MapPage() {
                   ]],
                 },
               }]);
-              navigate("/map", { replace: true });
             });
           }
         }}
-        initialViewState={{ longitude: lng, latitude: lat, zoom: 8 }}
+        initialViewState={{ longitude: lng, latitude: lat, zoom: 6 }}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
         interactiveLayerIds={["big info", "big info again"]}
@@ -390,8 +316,82 @@ function MapPage() {
               </button>
             </div>
           </Popup>
+
         )}
       </Map>
+
+      {/* Bottom bar: choropleth changer*/}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 300,
+          zIndex: 1,
+          display: "flex",
+          gap: "30px",
+        }}
+      >
+        <label>
+          <input type="radio" name="choropleth" value="Clear" checked={null} onChange={null} />
+          Clear
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Population" checked={null} onChange={null} />
+          Population
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Income" checked={null} onChange={null} />
+          Median Income
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Rent" checked={null} onChange={null} />
+          Median Rent
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Home Value" checked={null} onChange={null} />
+          Median Home Value
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={null} onChange={null} />
+          Bachelors Degree Rate
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={null} onChange={null} />
+          High School Graduation Rate
+        </label>
+
+        {/* 
+         <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Population
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Income
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Median Rent
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Home Value
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Bachelors Degree Rate
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          High School Graduation Rate
+        </button> */}
+
+      </div>
     </div>
   );
 }
