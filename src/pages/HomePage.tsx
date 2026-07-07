@@ -28,7 +28,7 @@ function HomePage() {
         <h1 className="text-4xl pl-10">HomeBound.</h1>
       </div>
 
-      {/* Hero headline text */}
+      {/*  Headline text */}
       <div className="text-6xl absolute" style={{ top: "10vh", left: "50vw", zIndex: 2 }}>
         <h1 className="text-white" style={{ fontSize: "10vw" }}>Home is where the heart is.</h1>
         <p className="text-white">Find your place.</p>
