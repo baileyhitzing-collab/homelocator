@@ -99,7 +99,7 @@ function MapPage() {
 
   // Choose which visual representation of data is showing
   function Choropleth(layerId: string) {
-    const [selectedMap, setSelectedMap] = useState('clear');
+    const [selectedMap, setSelectedMap] = useState("Clear");
 
     const handleChange = (event) => {
       setSelectedMap(layerId);
@@ -111,280 +111,283 @@ function MapPage() {
       mapInstance.setLayoutProperty("income", "visibility", "none");
       mapInstance.setLayoutProperty("rent", "visibility", "none");
       mapInstance.setLayoutProperty("pop", "visibility", "none");
-    };
-  }
+
+      if (event.target.value !== "Clear") {
+        mapInstance.setLayoutProperty(event.target.value, "visibility", "visible");
+      };
+    }
 
 
 
 
 
-  // Saves the currently open popup's county to localStorage favorites
-  function saveToFavorites() {
-    if (!popupInfo) return;
-    const existing = JSON.parse(localStorage.getItem("favorites") || "[]");
-    existing.push(popupInfo);
-    localStorage.setItem("favorites", JSON.stringify(existing));
-  }
+    // Saves the currently open popup's county to localStorage favorites
+    function saveToFavorites() {
+      if (!popupInfo) return;
+      const existing = JSON.parse(localStorage.getItem("favorites") || "[]");
+      existing.push(popupInfo);
+      localStorage.setItem("favorites", JSON.stringify(existing));
+    }
 
-  return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    return (
+      <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
 
-      {/* Top bar: search box, Filters button, Favorites button */}
-      <div
-        style={{
-          position: "absolute",
-          top: 10,
-          left: 10,
-          zIndex: 1,
-          display: "flex",
-          gap: "8px",
-        }}
-      >
-        <SearchBox
-          accessToken={token}
-          map={mapInstance}
-          mapboxgl={mapboxgl}
-          marker
-          value={value}
-          onChange={(val) => setValue(val)}
-          onRetrieve={(result) => {
-            const feature = result.features[0];
-            let minLng: number, minLat: number, maxLng: number, maxLat: number;
-
-            // Use the result's bounding box if available, otherwise build one from the center point
-            if (feature.bbox) {
-              [minLng, minLat, maxLng, maxLat] = feature.bbox;
-            } else {
-              const [lng, lat] = feature.geometry.coordinates;
-              const pad = 0.5;
-              minLng = lng - pad; maxLng = lng + pad;
-              minLat = lat - pad; maxLat = lat + pad;
-            }
-
-            // Filter the map to only show counties within this bounding box
-            if (mapInstance) {
-              mapInstance.setFilter("big info", ["within", {
-                type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [minLng, minLat],
-                    [maxLng, minLat],
-                    [maxLng, maxLat],
-                    [minLng, maxLat],
-                    [minLng, minLat],
-                  ]],
-                },
-              }]);
-            }
+        {/* Top bar: search box, Filters button, Favorites button */}
+        <div
+          style={{
+            position: "absolute",
+            top: 10,
+            left: 10,
+            zIndex: 1,
+            display: "flex",
+            gap: "8px",
           }}
-          placeholder="Search for counties in Georgia"
-          options={{
-            proximity: [-83.51424, 32.99815],
-            bbox: [-85.60518, 30.35538, -80.75488, 34.98466],
-          }}
-        />
+        >
+          <SearchBox
+            accessToken={token}
+            map={mapInstance}
+            mapboxgl={mapboxgl}
+            marker
+            value={value}
+            onChange={(val) => setValue(val)}
+            onRetrieve={(result) => {
+              const feature = result.features[0];
+              let minLng: number, minLat: number, maxLng: number, maxLat: number;
 
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Filters
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          Favorites
-        </button>
-      </div>
-
-      {/* Filter panel — shown when user clicks the Filters button */}
-      {showFilters && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-80">
-          <h2 className="text-lg font-medium mb-4">Population</h2>
-          <div className="flex gap-12 pb-4">
-            <button
-              onClick={() => setPopulation("urban")}
-              className={
-                population === "urban"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
-                  : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
+              // Use the result's bounding box if available, otherwise build one from the center point
+              if (feature.bbox) {
+                [minLng, minLat, maxLng, maxLat] = feature.bbox;
+              } else {
+                const [lng, lat] = feature.geometry.coordinates;
+                const pad = 0.5;
+                minLng = lng - pad; maxLng = lng + pad;
+                minLat = lat - pad; maxLat = lat + pad;
               }
-            >
-              Urban
-            </button>
-            <button
-              onClick={() => setPopulation("suburban")}
-              className={
-                population === "suburban"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
-                  : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
+
+              // Filter the map to only show counties within this bounding box
+              if (mapInstance) {
+                mapInstance.setFilter("big info", ["within", {
+                  type: "Feature",
+                  geometry: {
+                    type: "Polygon",
+                    coordinates: [[
+                      [minLng, minLat],
+                      [maxLng, minLat],
+                      [maxLng, maxLat],
+                      [minLng, maxLat],
+                      [minLng, minLat],
+                    ]],
+                  },
+                }]);
               }
-            >
-              Suburban
-            </button>
-            <button
-              onClick={() => setPopulation("rural")}
-              className={
-                population === "rural"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
-                  : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
-              }
-            >
-              Rural
-            </button>
-          </div>
-
-          <div className="pb-4">
-            <h2 className="text-lg font-medium mb-4">Yearly Income</h2>
-            <input
-              type="number"
-              value={number}
-              onChange={(e) => setNumber(e.target.value)}
-              className="border rounded-lg px-3 py-2 w-full"
-            />
-          </div>
-
-          <h2 className="text-lg font-medium mb-4">Price Range</h2>
-          <div className="flex justify-between mb-4">
-            <span className="text-gray-500 text-sm">
-              Min: <strong>${range[0].toLocaleString()}</strong>
-            </span>
-            <span className="text-gray-500 text-sm">
-              Max: <strong>${range[1].toLocaleString()}</strong>
-            </span>
-          </div>
-
-          <Slider
-            range
-            min={0}
-            max={1000000}
-            step={1000}
-            value={range}
-            onChange={(val) => setRange(val as number[])}
+            }}
+            placeholder="Search for counties in Georgia"
+            options={{
+              proximity: [-83.51424, 32.99815],
+              bbox: [-85.60518, 30.35538, -80.75488, 34.98466],
+            }}
           />
 
-          <button
-            onClick={applyFilters}
-            className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
-          >
-            Apply Filters
+          <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+            Filters
           </button>
 
-          <button
-            onClick={clearFilters}
-            className="mt-2 w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
-          >
-            Clear Filters
+          <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+            Favorites
           </button>
         </div>
-      )}
 
-      {/* The main map */}
-      <Map
-        ref={mapRef}
-        mapboxAccessToken={token}
-        onLoad={() => {
-          const map = mapRef.current?.getMap();
-          setMapInstance(map);
-
-          // If the user arrived from a search, zoom into that area once the map is ready
-          const searchLat = Number(searchParams.get("lat"));
-          const searchLng = Number(searchParams.get("lng"));
-          if (searchLat && searchLng && map) {
-            const pad = 0.5;
-            map.once("idle", () => {
-              map.setFilter("big info", ["within", {
-                type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [searchLng - pad, searchLat - pad],
-                    [searchLng + pad, searchLat - pad],
-                    [searchLng + pad, searchLat + pad],
-                    [searchLng - pad, searchLat + pad],
-                    [searchLng - pad, searchLat - pad],
-                  ]],
-                },
-              }]);
-            });
-          }
-        }}
-        initialViewState={{ longitude: lng, latitude: lat, zoom: 6 }}
-        style={{ width: "100%", height: "100%" }}
-        mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
-        interactiveLayerIds={["big info", "big info again"]}
-        onClick={handleMapClick}
-      >
-        <NavigationControl position="top-right" />
-
-        {/* Popup shown when a county is clicked */}
-        {popupInfo && (
-          <Popup
-            longitude={popupInfo.longitude}
-            latitude={popupInfo.latitude}
-            onClose={() => setPopupInfo(null)}
-            closeOnClick={false}
-          >
-            <div>
-              <h3 style={{ fontWeight: "bold", marginBottom: 4 }}>{popupInfo.county}</h3>
-              <p>Population: {popupInfo.population.toLocaleString()}</p>
-              <p>Median Rent: ${popupInfo.medianRent.toLocaleString()}</p>
-              <p>Home Value: ${popupInfo.medianHomeValue.toLocaleString()}</p>
-              <p>Median Income: ${popupInfo.medianIncome.toLocaleString()}</p>
-              <button onClick={saveToFavorites} className="border rounded-lg p-2">
-                Favorite
+        {/* Filter panel — shown when user clicks the Filters button */}
+        {showFilters && (
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-80">
+            <h2 className="text-lg font-medium mb-4">Population</h2>
+            <div className="flex gap-12 pb-4">
+              <button
+                onClick={() => setPopulation("urban")}
+                className={
+                  population === "urban"
+                    ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                    : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
+                }
+              >
+                Urban
+              </button>
+              <button
+                onClick={() => setPopulation("suburban")}
+                className={
+                  population === "suburban"
+                    ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                    : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
+                }
+              >
+                Suburban
+              </button>
+              <button
+                onClick={() => setPopulation("rural")}
+                className={
+                  population === "rural"
+                    ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                    : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
+                }
+              >
+                Rural
               </button>
             </div>
-          </Popup>
 
+            <div className="pb-4">
+              <h2 className="text-lg font-medium mb-4">Yearly Income</h2>
+              <input
+                type="number"
+                value={number}
+                onChange={(e) => setNumber(e.target.value)}
+                className="border rounded-lg px-3 py-2 w-full"
+              />
+            </div>
+
+            <h2 className="text-lg font-medium mb-4">Price Range</h2>
+            <div className="flex justify-between mb-4">
+              <span className="text-gray-500 text-sm">
+                Min: <strong>${range[0].toLocaleString()}</strong>
+              </span>
+              <span className="text-gray-500 text-sm">
+                Max: <strong>${range[1].toLocaleString()}</strong>
+              </span>
+            </div>
+
+            <Slider
+              range
+              min={0}
+              max={1000000}
+              step={1000}
+              value={range}
+              onChange={(val) => setRange(val as number[])}
+            />
+
+            <button
+              onClick={applyFilters}
+              className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            >
+              Apply Filters
+            </button>
+
+            <button
+              onClick={clearFilters}
+              className="mt-2 w-full bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300"
+            >
+              Clear Filters
+            </button>
+          </div>
         )}
-      </Map>
 
-      {/* Bottom bar: choropleth changer*/}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 10,
-          left: 300,
-          zIndex: 1,
-          display: "flex",
-          gap: "30px",
-        }}
-      >
-        <label>
-          <input type="radio" name="choropleth" value="Clear" checked={null} onChange={null} />
-          Clear
-        </label>
+        {/* The main map */}
+        <Map
+          ref={mapRef}
+          mapboxAccessToken={token}
+          onLoad={() => {
+            const map = mapRef.current?.getMap();
+            setMapInstance(map);
 
-        <label>
-          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
+            // If the user arrived from a search, zoom into that area once the map is ready
+            const searchLat = Number(searchParams.get("lat"));
+            const searchLng = Number(searchParams.get("lng"));
+            if (searchLat && searchLng && map) {
+              const pad = 0.5;
+              map.once("idle", () => {
+                map.setFilter("big info", ["within", {
+                  type: "Feature",
+                  geometry: {
+                    type: "Polygon",
+                    coordinates: [[
+                      [searchLng - pad, searchLat - pad],
+                      [searchLng + pad, searchLat - pad],
+                      [searchLng + pad, searchLat + pad],
+                      [searchLng - pad, searchLat + pad],
+                      [searchLng - pad, searchLat - pad],
+                    ]],
+                  },
+                }]);
+              });
+            }
+          }}
+          initialViewState={{ longitude: lng, latitude: lat, zoom: 6 }}
+          style={{ width: "100%", height: "100%" }}
+          mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
+          interactiveLayerIds={["big info", "big info again"]}
+          onClick={handleMapClick}
+        >
+          <NavigationControl position="top-right" />
 
-          Population
-        </label>
+          {/* Popup shown when a county is clicked */}
+          {popupInfo && (
+            <Popup
+              longitude={popupInfo.longitude}
+              latitude={popupInfo.latitude}
+              onClose={() => setPopupInfo(null)}
+              closeOnClick={false}
+            >
+              <div>
+                <h3 style={{ fontWeight: "bold", marginBottom: 4 }}>{popupInfo.county}</h3>
+                <p>Population: {popupInfo.population.toLocaleString()}</p>
+                <p>Median Rent: ${popupInfo.medianRent.toLocaleString()}</p>
+                <p>Home Value: ${popupInfo.medianHomeValue.toLocaleString()}</p>
+                <p>Median Income: ${popupInfo.medianIncome.toLocaleString()}</p>
+                <button onClick={saveToFavorites} className="border rounded-lg p-2">
+                  Favorite
+                </button>
+              </div>
+            </Popup>
 
-        <label>
-          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
-          Median Income
-        </label>
+          )}
+        </Map>
 
-        <label>
-          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
-          Median Rent
-        </label>
+        {/* Bottom bar: choropleth changer*/}
+        <div
+          style={{
+            position: "absolute",
+            bottom: 10,
+            left: 300,
+            zIndex: 1,
+            display: "flex",
+            gap: "30px",
+          }}
+        >
+          <label>
+            <input type="radio" name="choropleth" value="Clear" checked={null} onChange={null} />
+            Clear
+          </label>
 
-        <label>
-          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
-          Median Home Value
-        </label>
+          <label>
+            <input type="radio" name="choropleth" value="Population" checked={selectedMap === "pop"} onChange={() => setSelectedMap("pop")} />
 
-        <label>
-          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
-          Bachelors Degree Rate
-        </label>
+            Population
+          </label>
 
-        <label>
-          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
-          High School Graduation Rate
-        </label>
+          <label>
+            <input type="radio" name="choropleth" value="Median Income" checked={selectedMap === "income"} onChange={() => setSelectedMap("income")} />
+            Median Income
+          </label>
 
-        {/* 
+          <label>
+            <input type="radio" name="choropleth" value="Median Rent" checked={selectedMap === "rent"} onChange={() => setSelectedMap("rent")} />
+            Median Rent
+          </label>
+
+          <label>
+            <input type="radio" name="choropleth" value="Median Home Value" checked={selectedMap === "home"} onChange={() => setSelectedMap("home")} />
+            Median Home Value
+          </label>
+
+          <label>
+            <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={selectedMap === "bach"} onChange={() => setSelectedMap("bach")} />
+            Bachelors Degree Rate
+          </label>
+
+          <label>
+            <input type="radio" name="choropleth" value="High School Graduation Rate" checked={selectedMap === "high"} onChange={() => setSelectedMap("high")} />
+            High School Graduation Rate
+          </label>
+
+          {/* 
          <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
           Population
         </button>
@@ -409,9 +412,9 @@ function MapPage() {
           High School Graduation Rate
         </button> */}
 
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 }
-
 export default MapPage;
