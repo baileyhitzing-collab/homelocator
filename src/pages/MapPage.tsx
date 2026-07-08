@@ -9,14 +9,6 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
 
-// Choose which visual representation of data is showing - not finished
-function Choropleth() {
-  const [selectedMap, setSelectedMap] = useState('clear');
-
-  const handleChange = (event) => {
-    setSelectedMap(event.target.value);
-  };
-}
 
 // Shape of the data shown in the popup when a county is clicked
 type PopupInfo = {
@@ -100,6 +92,31 @@ function MapPage() {
       medianIncome: props.medianIncome,
     });
   }
+
+
+
+
+
+  // Choose which visual representation of data is showing
+  function Choropleth(layerId: string) {
+    const [selectedMap, setSelectedMap] = useState('clear');
+
+    const handleChange = (event) => {
+      setSelectedMap(layerId);
+
+      if (!mapInstance) return;
+      mapInstance.setLayoutProperty("high", "visibility", "none");
+      mapInstance.setLayoutProperty("bach", "visibility", "none");
+      mapInstance.setLayoutProperty("home", "visibility", "none");
+      mapInstance.setLayoutProperty("income", "visibility", "none");
+      mapInstance.setLayoutProperty("rent", "visibility", "none");
+      mapInstance.setLayoutProperty("pop", "visibility", "none");
+    };
+  }
+
+
+
+
 
   // Saves the currently open popup's county to localStorage favorites
   function saveToFavorites() {
@@ -337,32 +354,33 @@ function MapPage() {
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Population" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
+
           Population
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Income" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
           Median Income
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Rent" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
           Median Rent
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Home Value" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
           Median Home Value
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
           Bachelors Degree Rate
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
           High School Graduation Rate
         </label>
 
