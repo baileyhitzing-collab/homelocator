@@ -22,6 +22,7 @@ type PopupInfo = {
 };
 
 function MapPage() {
+
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
   const mapRef = useRef<MapRef>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map>();
@@ -43,6 +44,10 @@ function MapPage() {
 
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
+  const [activeLayer, setActiveLayer] = useState("Clear");
+
+
+
 
   // Sends filter values to the backend and narrows which counties are shown on the map
   async function applyFilters() {
@@ -93,30 +98,18 @@ function MapPage() {
     });
   }
 
-
-
-
-
   // Choose which visual representation of data is showing
-  function Choropleth(layerId: string) {
-    const [selectedMap, setSelectedMap] = useState('clear');
-
-    const handleChange = (event) => {
-      setSelectedMap(layerId);
-
-      if (!mapInstance) return;
-      mapInstance.setLayoutProperty("high", "visibility", "none");
-      mapInstance.setLayoutProperty("bach", "visibility", "none");
-      mapInstance.setLayoutProperty("home", "visibility", "none");
-      mapInstance.setLayoutProperty("income", "visibility", "none");
-      mapInstance.setLayoutProperty("rent", "visibility", "none");
-      mapInstance.setLayoutProperty("pop", "visibility", "none");
-    };
+  function switchLayer(layerId: string) {
+    setActiveLayer(layerId);
+    if (!mapInstance) return;
+    mapInstance.setLayoutProperty("high", "visibility", "none");
+    mapInstance.setLayoutProperty("bach", "visibility", "none");
+    mapInstance.setLayoutProperty("home", "visibility", "none");
+    mapInstance.setLayoutProperty("income", "visibility", "none");
+    mapInstance.setLayoutProperty("rent", "visibility", "none");
+    mapInstance.setLayoutProperty("pop", "visibility", "none");
+    mapInstance.setLayoutProperty(layerId, "visibility", "visible");
   }
-
-
-
-
 
   // Saves the currently open popup's county to localStorage favorites
   function saveToFavorites() {
@@ -349,7 +342,7 @@ function MapPage() {
         }}
       >
         <label>
-          <input type="radio" name="choropleth" value="Clear" checked={null} onChange={null} />
+          <input type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("")} />
           Clear
         </label>
 
@@ -383,31 +376,6 @@ function MapPage() {
           <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
           High School Graduation Rate
         </label>
-
-        {/* 
-         <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Population
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          Median Income
-        </button>
-
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Median Rent
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          Median Home Value
-        </button>
-
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Bachelors Degree Rate
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          High School Graduation Rate
-        </button> */}
 
       </div>
     </div>
