@@ -39,7 +39,11 @@ type RecommendationResult = {
   stateCode: string;
   countyCode: string;
   score: number;
-  recommendationReason: string[];
+  grade: string;
+  recommendationReason: {
+    strengths: string[];
+    considerations: string[];
+  };
 };
 
 
@@ -184,8 +188,8 @@ function MapPage() {
             let minLng: number, minLat: number, maxLng: number, maxLat: number;
 
             // Use the result's bounding box if available, otherwise build one from the center point
-            if (feature.bbox) {
-              [minLng, minLat, maxLng, maxLat] = feature.bbox;
+            if (feature.properties.bbox) {
+              [minLng, minLat, maxLng, maxLat] = feature.properties.bbox;
             } else {
               const [lng, lat] = feature.geometry.coordinates;
               const pad = 0.5;
@@ -310,7 +314,7 @@ function MapPage() {
       )}
 
       {recommendations.length > 0 && (
-  <div className="absolute top-0 right-0 h-full w-80 bg-white overflow-y-auto p-4 z-10">
+  <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-white overflow-y-auto p-4 z-10">
     <h2 className="text-lg font-medium mb-4">Top Picks</h2>
     {recommendations.map((r, i) => (
       <div
@@ -318,10 +322,13 @@ function MapPage() {
         className="border-b py-3 cursor-pointer"
         onClick={() => flyToCounty(r.areaName)}
       >
-        <div className="font-medium">#{i + 1} {r.areaName} — {r.score}</div>
+        <div className="font-medium">#{i + 1} {r.areaName} — {r.score} ({r.grade})</div>
         <ul className="text-sm text-gray-600 list-disc pl-4">
-          {r.recommendationReason.map((reason, j) => (
-            <li key={j}>{reason}</li>
+          {r.recommendationReason.strengths.map((reason, j) => (
+            <li key={`strength-${j}`}>{reason}</li>
+          ))}
+          {r.recommendationReason.considerations.map((reason, j) => (
+            <li key={`consideration-${j}`} className="text-gray-400">{reason}</li>
           ))}
         </ul>
       </div>
