@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from "react";
-
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { NavigationControl, Popup } from "react-map-gl/mapbox";
 import type { MapRef, MapMouseEvent } from "react-map-gl/mapbox";
@@ -8,6 +7,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+
 
 // Shape of the data shown in the popup when a county is clicked
 type PopupInfo = {
@@ -19,8 +19,6 @@ type PopupInfo = {
   medianHomeValue: number;
   medianIncome: number;
 };
-
-
 
 type MapArea = {
   areaName: string;
@@ -46,8 +44,6 @@ type RecommendationResult = {
   };
 };
 
-
-
 function MapPage() {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -72,7 +68,6 @@ function MapPage() {
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
 
-  
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
 
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
@@ -82,7 +77,6 @@ function MapPage() {
       .then((res) => res.json())
       .then((data) => setMapAreas(data));
   }, []);
-
 
   // Sends filter values to the backend and narrows which counties are shown on the map
   async function applyFilters() {
@@ -113,9 +107,6 @@ function MapPage() {
     }
   }
 
-
-
-
   // Resets all filters and shows every county again
   function clearFilters() {
     setPopulation("");
@@ -127,8 +118,6 @@ function MapPage() {
     }
   }
 
-
-
   function flyToCounty(areaName: string) {
     if (!mapInstance) return;
     const area = mapAreas.find((m) => m.areaName === areaName);
@@ -136,8 +125,6 @@ function MapPage() {
       mapInstance.flyTo({ center: [area.longitude, area.latitude], zoom: 10 });
     }
   }
-
-
 
   // Opens a popup with county info when the user clicks on the map
   function handleMapClick(e: MapMouseEvent & { features?: mapboxgl.GeoJSONFeature[] }) {
@@ -154,6 +141,11 @@ function MapPage() {
       medianIncome: props.medianIncome,
     });
   }
+
+
+
+
+
 
   // Saves the currently open popup's county to localStorage favorites
   function saveToFavorites() {
@@ -215,7 +207,7 @@ function MapPage() {
               }]);
             }
           }}
-          placeholder="Search for houses in Georgia"
+          placeholder="Search for counties in Georgia"
           options={{
             proximity: [-83.51424, 32.99815],
             bbox: [-85.60518, 30.35538, -80.75488, 34.98466],
@@ -312,7 +304,6 @@ function MapPage() {
           >
             Clear Filters
           </button>
-
         </div>
       )}
 
@@ -339,7 +330,6 @@ function MapPage() {
   </div>
 )}
 
-
       {/* The main map */}
       <Map
         ref={mapRef}
@@ -347,8 +337,6 @@ function MapPage() {
         onLoad={() => {
           const map = mapRef.current?.getMap();
           setMapInstance(map);
-          (window as any).map = map; // TEMP — for console debugging, remove after
-
 
           // If the user arrived from a search, zoom into that area once the map is ready
           const searchLat = Number(searchParams.get("lat"));
@@ -369,11 +357,10 @@ function MapPage() {
                   ]],
                 },
               }]);
-              navigate("/map", { replace: true });
             });
           }
         }}
-        initialViewState={{ longitude: lng, latitude: lat, zoom: 8 }}
+        initialViewState={{ longitude: lng, latitude: lat, zoom: 6 }}
         style={{ width: "100%", height: "100%" }}
         mapStyle="mapbox://styles/d-peters/cmqfkvh9a00d301s392w72eku"
         interactiveLayerIds={["big info", "big info again"]}
@@ -400,6 +387,7 @@ function MapPage() {
               </button>
             </div>
           </Popup>
+
         )}
       </Map>
     </div>
