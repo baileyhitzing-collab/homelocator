@@ -44,6 +44,25 @@ type RecommendationResult = {
   };
 };
 
+function buildBoundsFilter(bounds: [number, number, number, number]) {
+  const [minLng, minLat, maxLng, maxLat] = bounds;
+  return ["within", {type: "Feature",
+                geometry: {
+                  type: "Polygon",
+                  coordinates: [[
+                    [minLng, minLat],
+                    [maxLng, minLat],
+                    [maxLng, maxLat],
+                    [minLng, maxLat],
+                    [minLng, minLat],
+                  ]],
+                },
+              }
+  ]
+  
+
+}
+
 function MapPage() {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
   const apiUrl = import.meta.env.VITE_API_URL;
@@ -71,6 +90,9 @@ function MapPage() {
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
 
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
+  const [searchBounds, setSearchBounds] = useState<[number, number, number, number] | null>(null);
+
+
   // Choropleth interaction and associated legends
 
   const [activeLayer, setActiveLayer] = useState("Clear");
@@ -97,7 +119,14 @@ function MapPage() {
       // Only show counties whose names are in the filtered results
       const names = data.results.map((c: { areaName: string }) => c.areaName);
       if (mapInstance) {
-        mapInstance.setFilter("big info", ["in", ["get", "areaName"], ["literal", names]]);
+        const nameFilter = ["in", ["get", "areaName"], ["literal", names]];
+
+        if (searchBounds) {
+          mapInstance.setFilter("big info", ["all" , nameFilter, buildBoundsFilter(searchBounds)]);
+
+        }else {
+          mapInstance.setFilter("big info", nameFilter);
+        }
       }
 
       // Also refresh the Top Picks list using the same search
@@ -207,12 +236,17 @@ function MapPage() {
             // Use the result's bounding box if available, otherwise build one from the center point
             if (feature.properties.bbox) {
               [minLng, minLat, maxLng, maxLat] = feature.properties.bbox;
+            
+              const pad = 0.3;
+              minLng = minLng - pad; maxLng = maxLng + pad;
+              minLat = minLat - pad; maxLat = maxLat + pad;
             } else {
               const [lng, lat] = feature.geometry.coordinates;
               const pad = 0.5;
               minLng = lng - pad; maxLng = lng + pad;
               minLat = lat - pad; maxLat = lat + pad;
             }
+            setSearchBounds([minLng, minLat, maxLng, maxLat]);
 
             // Filter the map to only show counties within this bounding box
             if (mapInstance) {
