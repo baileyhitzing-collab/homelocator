@@ -1,5 +1,4 @@
-import { useState, useRef } from "react";
-import { createRoot } from 'react-dom/client';
+import { useState, useRef, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import Map, { NavigationControl, Popup } from "react-map-gl/mapbox";
 import type { MapRef, MapMouseEvent } from "react-map-gl/mapbox";
@@ -21,8 +20,33 @@ type PopupInfo = {
   medianIncome: number;
 };
 
+type MapArea = {
+  areaName: string;
+  latitude: number | null;
+  longitude: number | null;
+};
+
+type RecommendationResult = {
+  areaName: string;
+  population: number;
+  medianIncome: number;
+  medianHomeValue: number;
+  medianRent: number;
+  highSchoolRate: number | null;
+  bachelorRate: number | null;
+  stateCode: string;
+  countyCode: string;
+  score: number;
+  grade: string;
+  recommendationReason: {
+    strengths: string[];
+    considerations: string[];
+  };
+};
+
 function MapPage() {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
+  const apiUrl = import.meta.env.VITE_API_URL;
   const mapRef = useRef<MapRef>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map>();
   const navigate = useNavigate();
@@ -44,13 +68,23 @@ function MapPage() {
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
 
+  const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
+
+  const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
+
+  useEffect(() => {
+    fetch(`${apiUrl}/api/map-areas`)
+      .then((res) => res.json())
+      .then((data) => setMapAreas(data));
+  }, []);
+
   // Sends filter values to the backend and narrows which counties are shown on the map
   async function applyFilters() {
     try {
       const minIncome = number ? Number(number) - 15000 : "";
       const maxIncome = number ? Number(number) + 15000 : "";
 
-      const url = `http://localhost:3000/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
+      const url = `${apiUrl}/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -60,6 +94,12 @@ function MapPage() {
       if (mapInstance) {
         mapInstance.setFilter("big info", ["in", ["get", "areaName"], ["literal", names]]);
       }
+
+      // Also refresh the Top Picks list using the same search
+      const recUrl = `${apiUrl}/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
+      const recResponse = await fetch(recUrl);
+      const recData = await recResponse.json();
+      setRecommendations(recData.results);
 
       setShowFilters(false);
     } catch (error) {
@@ -72,8 +112,17 @@ function MapPage() {
     setPopulation("");
     setNumber("");
     setRange([0, 10000000]);
+    setRecommendations([]);
     if (mapInstance) {
       mapInstance.setFilter("big info", null);
+    }
+  }
+
+  function flyToCounty(areaName: string) {
+    if (!mapInstance) return;
+    const area = mapAreas.find((m) => m.areaName === areaName);
+    if (area?.latitude && area?.longitude) {
+      mapInstance.flyTo({ center: [area.longitude, area.latitude], zoom: 10 });
     }
   }
 
@@ -93,26 +142,6 @@ function MapPage() {
     });
   }
 
-
-
-
-
-  // Choose which visual representation of data is showing
-  function Choropleth(layerId: string) {
-    const [selectedMap, setSelectedMap] = useState('clear');
-
-    const handleChange = (event) => {
-      setSelectedMap(layerId);
-
-      if (!mapInstance) return;
-      mapInstance.setLayoutProperty("high", "visibility", "none");
-      mapInstance.setLayoutProperty("bach", "visibility", "none");
-      mapInstance.setLayoutProperty("home", "visibility", "none");
-      mapInstance.setLayoutProperty("income", "visibility", "none");
-      mapInstance.setLayoutProperty("rent", "visibility", "none");
-      mapInstance.setLayoutProperty("pop", "visibility", "none");
-    };
-  }
 
 
 
@@ -152,8 +181,8 @@ function MapPage() {
             let minLng: number, minLat: number, maxLng: number, maxLat: number;
 
             // Use the result's bounding box if available, otherwise build one from the center point
-            if (feature.bbox) {
-              [minLng, minLat, maxLng, maxLat] = feature.bbox;
+            if (feature.properties.bbox) {
+              [minLng, minLat, maxLng, maxLat] = feature.properties.bbox;
             } else {
               const [lng, lat] = feature.geometry.coordinates;
               const pad = 0.5;
@@ -196,7 +225,9 @@ function MapPage() {
 
       {/* Filter panel — shown when user clicks the Filters button */}
       {showFilters && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-80">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-[clamp(200px,50vw,500px)]">
+          <button onClick={() => setShowFilters(false)} className=" px-2 py-1 absolute top-3 right-4 rounded text-xl hover:bg-gray-300 border ">X</button>
+            
           <h2 className="text-lg font-medium mb-4">Population</h2>
           <div className="flex gap-12 pb-4">
             <button
@@ -276,6 +307,29 @@ function MapPage() {
         </div>
       )}
 
+      {recommendations.length > 0 && (
+  <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-white overflow-y-auto p-4 z-10">
+    <h2 className="text-lg font-medium mb-4">Top Picks</h2>
+    {recommendations.map((r, i) => (
+      <div
+        key={r.areaName}
+        className="border-b py-3 cursor-pointer"
+        onClick={() => flyToCounty(r.areaName)}
+      >
+        <div className="font-medium">#{i + 1} {r.areaName} — {r.score} ({r.grade})</div>
+        <ul className="text-sm text-gray-600 list-disc pl-4">
+          {r.recommendationReason.strengths.map((reason, j) => (
+            <li key={`strength-${j}`}>{reason}</li>
+          ))}
+          {r.recommendationReason.considerations.map((reason, j) => (
+            <li key={`consideration-${j}`} className="text-gray-400">{reason}</li>
+          ))}
+        </ul>
+      </div>
+    ))}
+  </div>
+)}
+
       {/* The main map */}
       <Map
         ref={mapRef}
@@ -336,80 +390,6 @@ function MapPage() {
 
         )}
       </Map>
-
-      {/* Bottom bar: choropleth changer*/}
-      <div
-        style={{
-          position: "absolute",
-          bottom: 10,
-          left: 300,
-          zIndex: 1,
-          display: "flex",
-          gap: "30px",
-        }}
-      >
-        <label>
-          <input type="radio" name="choropleth" value="Clear" checked={null} onChange={null} />
-          Clear
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
-
-          Population
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
-          Median Income
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
-          Median Rent
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
-          Median Home Value
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
-          Bachelors Degree Rate
-        </label>
-
-        <label>
-          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
-          High School Graduation Rate
-        </label>
-
-        {/* 
-         <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Population
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          Median Income
-        </button>
-
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Median Rent
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          Median Home Value
-        </button>
-
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
-          Bachelors Degree Rate
-        </button>
-
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
-          High School Graduation Rate
-        </button> */}
-
-      </div>
     </div>
   );
 }
