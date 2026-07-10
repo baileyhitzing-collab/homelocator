@@ -67,14 +67,16 @@ function MapPage() {
 
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
-
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
-
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
-  // Choropleth interaction and associated legends
 
+  // Choropleth interaction and associated legends
   const [activeLayer, setActiveLayer] = useState("Clear");
-  const [activeLeg, setActiveLeg] = useState("none");
+  const [activeLeg, setActiveLeg] = useState('none');
+  const handleLegend = (event) => {
+    setActiveLeg(event.target.value);
+  };
+
   useEffect(() => {
     fetch(`${apiUrl}/api/map-areas`)
       .then((res) => res.json())
@@ -169,6 +171,7 @@ function MapPage() {
     mapInstance.setLayoutProperty("rent", "visibility", "none");
     mapInstance.setLayoutProperty("pop", "visibility", "none");
     mapInstance.setLayoutProperty(layerId, "visibility", "visible");
+
   }
 
   // Saves the currently open popup's county to localStorage favorites
@@ -489,6 +492,53 @@ function MapPage() {
           High School Graduation Rate
         </button> */}
 
+      </div>
+      <div className="image-display-area" style={{ marginTop: '20px' }}>
+        {activeLeg === 'pop' && (
+          <img
+            src="choroPop.png"
+            alt="pop"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
+
+        {activeLeg === 'income' && (
+          <img
+            src="choroIncome.png"
+            alt="income"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
+        {activeLeg === 'rent' && (
+          <img
+            src="choroRent.png"
+            alt="rent"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
+
+        {activeLeg === 'home' && (
+          <img
+            src="choroHome.png"
+            alt="home"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
+        {activeLeg === 'bach' && (
+          <img
+            src="choroBach.png"
+            alt="bach"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
+
+        {activeLeg === 'high' && (
+          <img
+            src="choroHigh.png"
+            alt="high"
+            style={{ borderRadius: '8px' }}
+          />
+        )}
       </div>
     </div>
   );
