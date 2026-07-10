@@ -50,6 +50,7 @@ type RecommendationResult = {
 
 function MapPage() {
   const token = import.meta.env.VITE_MAPBOX_TOKEN;
+  const apiUrl = import.meta.env.VITE_API_URL;
   const mapRef = useRef<MapRef>(null);
   const [mapInstance, setMapInstance] = useState<mapboxgl.Map>();
   const navigate = useNavigate();
@@ -77,7 +78,7 @@ function MapPage() {
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:3000/api/map-areas")
+    fetch(`${apiUrl}/api/map-areas`)
       .then((res) => res.json())
       .then((data) => setMapAreas(data));
   }, []);
@@ -89,7 +90,7 @@ function MapPage() {
       const minIncome = number ? Number(number) - 15000 : "";
       const maxIncome = number ? Number(number) + 15000 : "";
 
-      const url = `http://localhost:3000/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
+      const url = `${apiUrl}/api/areas/filter?minPrice=${range[0]}&maxPrice=${range[1]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
 
       const response = await fetch(url);
       const data = await response.json();
@@ -101,7 +102,7 @@ function MapPage() {
       }
 
       // Also refresh the Top Picks list using the same search
-      const recUrl = `http://localhost:3000/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
+      const recUrl = `${apiUrl}/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
       const recResponse = await fetch(recUrl);
       const recData = await recResponse.json();
       setRecommendations(recData.results);
@@ -232,7 +233,9 @@ function MapPage() {
 
       {/* Filter panel — shown when user clicks the Filters button */}
       {showFilters && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-80">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-[clamp(200px,50vw,500px)]">
+          <button onClick={() => setShowFilters(false)} className=" px-2 py-1 absolute top-3 right-4 rounded text-xl hover:bg-gray-300 border ">X</button>
+            
           <h2 className="text-lg font-medium mb-4">Population</h2>
           <div className="flex gap-12 pb-4">
             <button
