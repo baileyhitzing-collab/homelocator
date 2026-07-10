@@ -390,6 +390,93 @@ function MapPage() {
 
         )}
       </Map>
+            {/* Bottom bar: choropleth changer and legend*/}
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 300,
+          zIndex: 1,
+          display: "flex",
+          gap: "30px",
+          background: "white",
+          border: 5,
+          padding: 7,
+        }}
+      >
+        {/* function blockColorLine() {
+    return (
+      <div
+        style={{
+          height: '10px',
+          width: '100%',
+          top: 'linear-gradient(to right, #red 0% 33%, #yellow 33% 66%, #blue 66% 100%)'
+        }}
+      />
+    );
+  } */}
+        <label>
+          <input type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("")} />
+          Clear
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
+
+          Population
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
+          Median Income
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
+          Median Rent
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
+          Median Home Value
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
+          Bachelors Degree Rate
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
+          High School Graduation Rate
+        </label>
+
+        {/* 
+         <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Population
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Income
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Median Rent
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Home Value
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Bachelors Degree Rate
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          High School Graduation Rate
+        </button> */}
+
+      </div>
     </div>
   );
 }
