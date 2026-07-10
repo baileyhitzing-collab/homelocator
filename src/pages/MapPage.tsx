@@ -71,12 +71,17 @@ function MapPage() {
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
 
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
+  // Choropleth interaction and associated legends
 
+  const [activeLayer, setActiveLayer] = useState("Clear");
+  const [activeLeg, setActiveLeg] = useState("none");
   useEffect(() => {
     fetch(`${apiUrl}/api/map-areas`)
       .then((res) => res.json())
       .then((data) => setMapAreas(data));
   }, []);
+
+
 
   // Sends filter values to the backend and narrows which counties are shown on the map
   async function applyFilters() {
@@ -142,10 +147,29 @@ function MapPage() {
     });
   }
 
+  // Choose which visual representation of data is showing
+  function switchLayer(layerId: string) {
+    setActiveLayer(layerId);
+    if (!mapInstance) return;
 
-
-
-
+    /* mapRef.current.addLayer({
+        id: 'outline',
+        type: 'line',
+        source: 'maine',
+        layout: {},
+        paint: {
+          'line-color': '#000',
+          'line-width': 1
+        }
+      });  */
+    mapInstance.setLayoutProperty("high", "visibility", "none");
+    mapInstance.setLayoutProperty("bach", "visibility", "none");
+    mapInstance.setLayoutProperty("home", "visibility", "none");
+    mapInstance.setLayoutProperty("income", "visibility", "none");
+    mapInstance.setLayoutProperty("rent", "visibility", "none");
+    mapInstance.setLayoutProperty("pop", "visibility", "none");
+    mapInstance.setLayoutProperty(layerId, "visibility", "visible");
+  }
 
   // Saves the currently open popup's county to localStorage favorites
   function saveToFavorites() {
@@ -227,7 +251,7 @@ function MapPage() {
       {showFilters && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 bg-white rounded-xl p-6 shadow-md w-[clamp(200px,50vw,500px)]">
           <button onClick={() => setShowFilters(false)} className=" px-2 py-1 absolute top-3 right-4 rounded text-xl hover:bg-gray-300 border ">X</button>
-            
+
           <h2 className="text-lg font-medium mb-4">Population</h2>
           <div className="flex gap-12 pb-4">
             <button
@@ -308,27 +332,27 @@ function MapPage() {
       )}
 
       {recommendations.length > 0 && (
-  <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-white overflow-y-auto p-4 z-10">
-    <h2 className="text-lg font-medium mb-4">Top Picks</h2>
-    {recommendations.map((r, i) => (
-      <div
-        key={r.areaName}
-        className="border-b py-3 cursor-pointer"
-        onClick={() => flyToCounty(r.areaName)}
-      >
-        <div className="font-medium">#{i + 1} {r.areaName} — {r.score} ({r.grade})</div>
-        <ul className="text-sm text-gray-600 list-disc pl-4">
-          {r.recommendationReason.strengths.map((reason, j) => (
-            <li key={`strength-${j}`}>{reason}</li>
+        <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-white overflow-y-auto p-4 z-10">
+          <h2 className="text-lg font-medium mb-4">Top Picks</h2>
+          {recommendations.map((r, i) => (
+            <div
+              key={r.areaName}
+              className="border-b py-3 cursor-pointer"
+              onClick={() => flyToCounty(r.areaName)}
+            >
+              <div className="font-medium">#{i + 1} {r.areaName} — {r.score} ({r.grade})</div>
+              <ul className="text-sm text-gray-600 list-disc pl-4">
+                {r.recommendationReason.strengths.map((reason, j) => (
+                  <li key={`strength-${j}`}>{reason}</li>
+                ))}
+                {r.recommendationReason.considerations.map((reason, j) => (
+                  <li key={`consideration-${j}`} className="text-gray-400">{reason}</li>
+                ))}
+              </ul>
+            </div>
           ))}
-          {r.recommendationReason.considerations.map((reason, j) => (
-            <li key={`consideration-${j}`} className="text-gray-400">{reason}</li>
-          ))}
-        </ul>
-      </div>
-    ))}
-  </div>
-)}
+        </div>
+      )}
 
       {/* The main map */}
       <Map
@@ -390,6 +414,82 @@ function MapPage() {
 
         )}
       </Map>
+
+      <div
+        style={{
+          position: "absolute",
+          bottom: 10,
+          left: 300,
+          zIndex: 1,
+          display: "flex",
+          gap: "30px",
+          background: "white",
+          border: 5,
+          padding: 7,
+        }}
+      >
+        <label>
+          <input type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("")} />
+          Clear
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
+
+          Population
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
+          Median Income
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
+          Median Rent
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
+          Median Home Value
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
+          Bachelors Degree Rate
+        </label>
+
+        <label>
+          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
+          High School Graduation Rate
+        </label>
+
+        {/* 
+         <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Population
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Income
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Median Rent
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          Median Home Value
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+          Bachelors Degree Rate
+        </button>
+
+        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+          High School Graduation Rate
+        </button> */}
+
+      </div>
     </div>
   );
 }
