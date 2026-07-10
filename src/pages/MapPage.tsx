@@ -151,6 +151,7 @@ function MapPage() {
 
   // Choose which visual representation of data is showing
   function switchLayer(layerId: string) {
+
     setActiveLayer(layerId);
     if (!mapInstance) return;
 
@@ -418,7 +419,7 @@ function MapPage() {
         )}
       </Map>
 
-      <div
+      <div className="w-[clamp(200px,50vw,500px)]"
         style={{
           position: "absolute",
           bottom: 10,
@@ -431,6 +432,7 @@ function MapPage() {
           padding: 7,
         }}
       >
+
         <label>
           <input type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("")} />
           Clear
