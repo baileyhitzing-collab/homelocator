@@ -18,6 +18,7 @@ type PopupInfo = {
   medianRent: number;
   medianHomeValue: number;
   medianIncome: number;
+  //schools: string/url?;
 };
 
 type MapArea = {
@@ -46,20 +47,21 @@ type RecommendationResult = {
 
 function buildBoundsFilter(bounds: [number, number, number, number]) {
   const [minLng, minLat, maxLng, maxLat] = bounds;
-  return ["within", {type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [minLng, minLat],
-                    [maxLng, minLat],
-                    [maxLng, maxLat],
-                    [minLng, maxLat],
-                    [minLng, minLat],
-                  ]],
-                },
-              }
+  return ["within", {
+    type: "Feature",
+    geometry: {
+      type: "Polygon",
+      coordinates: [[
+        [minLng, minLat],
+        [maxLng, minLat],
+        [maxLng, maxLat],
+        [minLng, maxLat],
+        [minLng, minLat],
+      ]],
+    },
+  }
   ]
-  
+
 
 }
 
@@ -92,10 +94,10 @@ function MapPage() {
 
   // Choropleth interaction and associated legends
   const [activeLayer, setActiveLayer] = useState("Clear");
-  const [activeLeg, setActiveLeg] = useState('none');
-  const handleLegend = (event) => {
-    setActiveLeg(event.target.value);
-  };
+  const [activeLeg, setActiveLeg] = useState("none");
+  // const handleLegend = (event) => {
+  //   setActiveLeg(event.target.value);
+  // };
 
   useEffect(() => {
     fetch(`${apiUrl}/api/map-areas`)
@@ -122,9 +124,9 @@ function MapPage() {
         const nameFilter = ["in", ["get", "areaName"], ["literal", names]];
 
         if (searchBounds) {
-          mapInstance.setFilter("big info", ["all" , nameFilter, buildBoundsFilter(searchBounds)]);
+          mapInstance.setFilter("big info", ["all", nameFilter, buildBoundsFilter(searchBounds)]);
 
-        }else {
+        } else {
           mapInstance.setFilter("big info", nameFilter);
         }
       }
@@ -173,17 +175,18 @@ function MapPage() {
       medianRent: props.medianRent,
       medianHomeValue: props.medianHomeValue,
       medianIncome: props.medianIncome,
+      //schools: props.link,
     });
   }
 
   // Choose which visual representation of data is showing
-  function switchLayer(layerId: string) {
+  function switchLayer(layerId: string, choro: string) {
 
     setActiveLayer(layerId);
     if (!mapInstance) return;
 
     /* mapRef.current.addLayer({
-        id: 'outline',
+        id: layerId,
         type: 'line',
         source: 'maine',
         layout: {},
@@ -200,6 +203,7 @@ function MapPage() {
     mapInstance.setLayoutProperty("pop", "visibility", "none");
     mapInstance.setLayoutProperty(layerId, "visibility", "visible");
 
+    setActiveLeg(choro);
   }
 
   // Saves the currently open popup's county to localStorage favorites
@@ -238,7 +242,7 @@ function MapPage() {
             // Use the result's bounding box if available, otherwise build one from the center point
             if (feature.properties.bbox) {
               [minLng, minLat, maxLng, maxLat] = feature.properties.bbox;
-            
+
               const pad = 0.3;
               minLng = minLng - pad; maxLng = maxLng + pad;
               minLat = minLat - pad; maxLat = maxLat + pad;
@@ -451,7 +455,8 @@ function MapPage() {
         )}
       </Map>
 
-      <div className="w-[clamp(200px,50vw,500px)]"
+      <div
+        //className="w-[clamp(300px,50vw,1000px)]"
         style={{
           position: "absolute",
           bottom: 10,
@@ -462,43 +467,43 @@ function MapPage() {
           background: "white",
           border: 5,
           padding: 7,
+          borderRadius: 8,
         }}
       >
 
         <label>
-          <input type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("")} />
-          Clear
+          <input className="" type="radio" name="choropleth" value="Clear" checked={activeLayer === ""} onChange={() => switchLayer("", "")} />
+          &nbsp;Clear
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop")} />
-
-          Population
+          <input className="" type="radio" name="choropleth" value="Population" checked={activeLayer === "pop"} onChange={() => switchLayer("pop", "pop")} />
+          &nbsp;Population
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income")} />
-          Median Income
+          <input className="" type="radio" name="choropleth" value="Median Income" checked={activeLayer === "income"} onChange={() => switchLayer("income", "income")} />
+          &nbsp;Median Income
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent")} />
-          Median Rent
+          <input className="" type="radio" name="choropleth" value="Median Rent" checked={activeLayer === "rent"} onChange={() => switchLayer("rent", "rent")} />
+          &nbsp;Median Rent
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home")} />
-          Median Home Value
+          <input className="" type="radio" name="choropleth" value="Median Home Value" checked={activeLayer === "home"} onChange={() => switchLayer("home", "home")} />
+          &nbsp;Median Home Value
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach")} />
-          Bachelors Degree Rate
+          <input className="" type="radio" name="choropleth" value="Bachelors Degree Rate" checked={activeLayer === "bach"} onChange={() => switchLayer("bach", "bach")} />
+          &nbsp;Bachelors Degree Rate
         </label>
 
         <label>
-          <input type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high")} />
-          High School Graduation Rate
+          <input className="" type="radio" name="choropleth" value="High School Graduation Rate" checked={activeLayer === "high"} onChange={() => switchLayer("high", "high")} />
+          &nbsp;High School Graduation Rate
         </label>
 
         {/* 
@@ -527,12 +532,30 @@ function MapPage() {
         </button> */}
 
       </div>
-      <div className="image-display-area" style={{ marginTop: '20px' }}>
+
+
+      <div className="center"
+        //className="w-[clamp(300px,50vw,1000px)]"
+        style={{
+          position: "absolute",
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          bottom: 5,
+          //left: 290,
+          zIndex: 1,
+          display: "flex",
+          //gap: "30px",
+          //background: "white",
+          border: 5,
+          padding: 7,
+        }}
+      >
+        {/*className="image-display-area" style={{ bottom: '20px' }}>*/}
         {activeLeg === 'pop' && (
           <img
             src="choroPop.png"
             alt="pop"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 1000, height: 80 }}
           />
         )}
 
@@ -540,14 +563,14 @@ function MapPage() {
           <img
             src="choroIncome.png"
             alt="income"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 550, height: 80 }}
           />
         )}
         {activeLeg === 'rent' && (
           <img
             src="choroRent.png"
             alt="rent"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 430, height: 80 }}
           />
         )}
 
@@ -555,14 +578,14 @@ function MapPage() {
           <img
             src="choroHome.png"
             alt="home"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 650, height: 80 }}
           />
         )}
         {activeLeg === 'bach' && (
           <img
             src="choroBach.png"
             alt="bach"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 270, height: 80 }}
           />
         )}
 
@@ -570,7 +593,7 @@ function MapPage() {
           <img
             src="choroHigh.png"
             alt="high"
-            style={{ borderRadius: '8px' }}
+            style={{ borderRadius: '8px', width: 490, height: 80 }}
           />
         )}
       </div>
