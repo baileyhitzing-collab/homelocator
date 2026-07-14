@@ -540,7 +540,7 @@ function MapPage() {
           position: "absolute",
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          bottom: 5,
+          bottom: 25,
           //left: 290,
           zIndex: 1,
           display: "flex",
@@ -555,7 +555,7 @@ function MapPage() {
           <img
             src="choroPop.png"
             alt="pop"
-            style={{ borderRadius: '8px', width: 1000, height: 80 }}
+            style={{ borderRadius: '8px', width: 650, height: 60 }}
           />
         )}
 
@@ -563,14 +563,14 @@ function MapPage() {
           <img
             src="choroIncome.png"
             alt="income"
-            style={{ borderRadius: '8px', width: 550, height: 80 }}
+            style={{ borderRadius: '8px', width: 450, height: 60 }}
           />
         )}
         {activeLeg === 'rent' && (
           <img
             src="choroRent.png"
             alt="rent"
-            style={{ borderRadius: '8px', width: 430, height: 80 }}
+            style={{ borderRadius: '8px', width: 330, height: 60 }}
           />
         )}
 
@@ -578,14 +578,14 @@ function MapPage() {
           <img
             src="choroHome.png"
             alt="home"
-            style={{ borderRadius: '8px', width: 650, height: 80 }}
+            style={{ borderRadius: '8px', width: 500, height: 60 }}
           />
         )}
         {activeLeg === 'bach' && (
           <img
             src="choroBach.png"
             alt="bach"
-            style={{ borderRadius: '8px', width: 270, height: 80 }}
+            style={{ borderRadius: '8px', width: 230, height: 60 }}
           />
         )}
 
@@ -593,7 +593,7 @@ function MapPage() {
           <img
             src="choroHigh.png"
             alt="high"
-            style={{ borderRadius: '8px', width: 490, height: 80 }}
+            style={{ borderRadius: '8px', width: 400, height: 60 }}
           />
         )}
       </div>
