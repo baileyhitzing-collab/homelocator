@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { SearchBox } from "@mapbox/search-js-react";
 import mapboxgl from "mapbox-gl";
+import NavBar from "../components/NavBar";
 
 function HomePage() {
   const [value, setValue] = useState("");
@@ -24,8 +25,8 @@ function HomePage() {
       <div style={{ position: "absolute", inset: 0, backgroundColor: "rgba(0,0,0,0.4)", zIndex: 1 }} />
 
       {/* Top navigation bar */}
-      <div className="h-20 bg-white flex items-center w-screen" style={{ zIndex: 2, position: "relative" }}>
-        <h1 className="text-4xl pl-10">HomeBound.</h1>
+      <div style={{ zIndex: 2, position: "relative" }}>
+        <NavBar />
       </div>
 
       {/*  Headline text */}
@@ -37,11 +38,11 @@ function HomePage() {
       {/* Search card */}
       <div
         className="bg-white shadow-md absolute rounded-lg p-5"
-        style={{ top: "50vh", left: "5vw", zIndex: 2, width: "40vw" }}
+        style={{ top: "50vh", left: "5vw", zIndex: 2, width: "clamp(340px, 40vw, 620px)" }}
       >
         <h1 className="text-5xl font-medium">Where do you want to live?</h1>
         <div className="flex flex-col items-center justify-center gap-4 mt-5">
-          <div className="flex items-center gap-2" style={{ fontSize: "2vw" }}>
+          <div className="flex items-center gap-2" style={{ fontSize: "clamp(1rem, 2vw, 1.5rem)" }}>
             <SearchBox
               accessToken={token}
               mapboxgl={mapboxgl}
@@ -63,8 +64,8 @@ function HomePage() {
                   navigate("/map");
                 }
               }}
-              className="bg-black text-white p-3 rounded-lg hover:bg-blue-700 text-2xl"
-              style={{ fontSize: "2vw", width: "8vw" }}
+              className="bg-black text-white p-3 rounded-lg hover:bg-gray-800 text-2xl"
+              style={{ fontSize: "clamp(1rem, 2vw, 1.5rem)", width: "clamp(100px, 8vw, 160px)" }}
             >
               Search
             </button>

@@ -7,7 +7,7 @@ body{
 input[role="combobox"] {
   font-size: 1.25rem !important;
   height: 4rem !important;
-  width: 29vw !important;
+  width: clamp(180px, 22vw, 320px) !important;
 }
 
 body {

@@ -7,10 +7,11 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Slider from "rc-slider";
 import "rc-slider/assets/index.css";
+import NavBar from "../components/NavBar";
 
 
 // Shape of the data shown in the popup when a county is clicked
-type PopupInfo = {
+export type PopupInfo = {
   longitude: number;
   latitude: number;
   county: string;
@@ -44,7 +45,7 @@ type RecommendationResult = {
   };
 };
 
-function buildBoundsFilter(bounds: [number, number, number, number]) {
+function buildBoundsFilter(bounds: [number, number, number, number]): mapboxgl.FilterSpecification {
   const [minLng, minLat, maxLng, maxLat] = bounds;
   return ["within", {type: "Feature",
                 geometry: {
@@ -59,8 +60,23 @@ function buildBoundsFilter(bounds: [number, number, number, number]) {
                 },
               }
   ]
-  
 
+
+}
+
+// Degrees of padding applied around a single search point vs. an existing result bounding box
+const SEARCH_PAD = 0.5;
+const BBOX_PAD = 0.3;
+
+// Pads a center point out into a bounding box
+function boundsFromPoint(lng: number, lat: number, pad: number): [number, number, number, number] {
+  return [lng - pad, lat - pad, lng + pad, lat + pad];
+}
+
+// Pads an existing bounding box outward on all sides
+function padBounds(bbox: [number, number, number, number], pad: number): [number, number, number, number] {
+  const [minLng, minLat, maxLng, maxLat] = bbox;
+  return [minLng - pad, minLat - pad, maxLng + pad, maxLat + pad];
 }
 
 function MapPage() {
@@ -83,12 +99,21 @@ function MapPage() {
   const [population, setPopulation] = useState("");
   const [number, setNumber] = useState<number | string>("");
   const [range, setRange] = useState([100000, 500000]);
+  // Whether the current price/income/population filters should still apply
+  // the next time the search area changes (e.g. via a new search)
+  const [filtersApplied, setFiltersApplied] = useState(false);
 
   // Info shown in the popup when the user clicks a county
   const [popupInfo, setPopupInfo] = useState<PopupInfo | null>(null);
   const [recommendations, setRecommendations] = useState<RecommendationResult[]>([]);
   const [mapAreas, setMapAreas] = useState<MapArea[]>([]);
-  const [searchBounds, setSearchBounds] = useState<[number, number, number, number] | null>(null);
+
+  // Build the initial search area from the URL, if the user arrived from a HomePage search
+  const [searchBounds, setSearchBounds] = useState<[number, number, number, number] | null>(() => {
+    const searchLat = Number(searchParams.get("lat"));
+    const searchLng = Number(searchParams.get("lng"));
+    return searchLat && searchLng ? boundsFromPoint(searchLng, searchLat, SEARCH_PAD) : null;
+  });
 
   // Choropleth interaction and associated legends
   const [activeLayer, setActiveLayer] = useState("Clear");
@@ -101,12 +126,48 @@ function MapPage() {
     fetch(`${apiUrl}/api/map-areas`)
       .then((res) => res.json())
       .then((data) => setMapAreas(data));
+  }, [apiUrl]);
+
+  // If the user arrived here from a HomePage search, searchBounds is already
+  // set. Fetch Top Picks scoped to that area once on mount 
+  useEffect(() => {
+    if (searchBounds) {
+      fetchRecommendations(searchBounds);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
 
+  // Fetches the Top Picks recommendations using the current filter values.
+  // Called whenever filters are applied AND whenever a new search happens,
+  // so Top Picks always reflects the latest area/criteria.
+  async function fetchRecommendations(bounds: [number, number, number, number] | null = searchBounds) {
+    try {
+      const minIncome = number ? Number(number) - 15000 : "";
+      const maxIncome = number ? Number(number) + 15000 : "";
+
+      // Pass the searched area straight to the backend so it can narrow the
+      // candidate pool BEFORE scoring/ranking. 
+      const boundsParams = bounds
+        ? `&minLng=${bounds[0]}&minLat=${bounds[1]}&maxLng=${bounds[2]}&maxLat=${bounds[3]}`
+        : "";
+
+      const recUrl = `${apiUrl}/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}${boundsParams}`;
+      const recResponse = await fetch(recUrl);
+      const recData = await recResponse.json();
+      setRecommendations(recData.results);
+    } catch (error) {
+      console.log("error:", error);
+    }
+  }
+
   // Sends filter values to the backend and narrows which counties are shown on the map
-  async function applyFilters() {
+  // Fetches counties matching the current price/income/population filters
+  // and applies them to the map, combined with the given search area if
+  // there is one. Shared by applyFilters and by a new search (onRetrieve),
+  // so the map keeps respecting active filters after the search area changes.
+  async function updateMapFilter(bounds: [number, number, number, number] | null) {
     try {
       const minIncome = number ? Number(number) - 15000 : "";
       const maxIncome = number ? Number(number) + 15000 : "";
@@ -121,24 +182,26 @@ function MapPage() {
       if (mapInstance) {
         const nameFilter = ["in", ["get", "areaName"], ["literal", names]];
 
-        if (searchBounds) {
-          mapInstance.setFilter("big info", ["all" , nameFilter, buildBoundsFilter(searchBounds)]);
+        if (bounds) {
+          mapInstance.setFilter("big info", ["all" , nameFilter, buildBoundsFilter(bounds)]);
 
         }else {
           mapInstance.setFilter("big info", nameFilter);
         }
       }
-
-      // Also refresh the Top Picks list using the same search
-      const recUrl = `${apiUrl}/api/recommendations?maxPrice=${range[1]}&minPrice=${range[0]}${minIncome ? `&minIncome=${minIncome}&maxIncome=${maxIncome}` : ""}${population ? `&populationType=${population}` : ""}`;
-      const recResponse = await fetch(recUrl);
-      const recData = await recResponse.json();
-      setRecommendations(recData.results);
-
-      setShowFilters(false);
     } catch (error) {
       console.log("error:", error);
     }
+  }
+
+  async function applyFilters() {
+    setFiltersApplied(true);
+    await updateMapFilter(searchBounds);
+
+    // Also refresh the Top Picks list using the same search
+    await fetchRecommendations();
+
+    setShowFilters(false);
   }
 
   // Resets all filters and shows every county again
@@ -147,6 +210,7 @@ function MapPage() {
     setNumber("");
     setRange([0, 10000000]);
     setRecommendations([]);
+    setFiltersApplied(false);
     if (mapInstance) {
       mapInstance.setFilter("big info", null);
     }
@@ -165,6 +229,7 @@ function MapPage() {
     const feature = e.features && e.features[0];
     if (!feature) return;
     const props = feature.properties;
+    if (!props) return;
     setPopupInfo({
       longitude: e.lngLat.lng,
       latitude: e.lngLat.lat,
@@ -202,16 +267,29 @@ function MapPage() {
 
   }
 
-  // Saves the currently open popup's county to localStorage favorites
+  // Saves the currently open popup's county to localStorage favorites.
+  // Skips the save if that county is already favorited, so there can only
+  // ever be one entry per county.
   function saveToFavorites() {
     if (!popupInfo) return;
     const existing = JSON.parse(localStorage.getItem("favorites") || "[]");
+
+    const alreadyFavorited = existing.some(
+      (fav: PopupInfo) => fav.county === popupInfo.county
+    );
+    if (alreadyFavorited) {
+      alert(`${popupInfo.county} is already in your favorites.`);
+      return;
+    }
+
     existing.push(popupInfo);
     localStorage.setItem("favorites", JSON.stringify(existing));
   }
 
   return (
-    <div style={{ width: "100vw", height: "100vh", position: "relative" }}>
+    <div style={{ width: "100vw", height: "100vh", display: "flex", flexDirection: "column" }}>
+      <NavBar />
+      <div style={{ position: "relative", flex: 1, minHeight: 0 }}>
 
       {/* Top bar: search box, Filters button, Favorites button */}
       <div
@@ -231,41 +309,34 @@ function MapPage() {
           marker
           value={value}
           onChange={(val) => setValue(val)}
+          onClear={() => {
+            // Clearing the search box resets scoping back to statewide
+            setSearchBounds(null);
+            if (mapInstance) {
+              mapInstance.setFilter("big info", null);
+            }
+            fetchRecommendations(null);
+          }}
           onRetrieve={(result) => {
             const feature = result.features[0];
-            let minLng: number, minLat: number, maxLng: number, maxLat: number;
 
             // Use the result's bounding box if available, otherwise build one from the center point
-            if (feature.properties.bbox) {
-              [minLng, minLat, maxLng, maxLat] = feature.properties.bbox;
-            
-              const pad = 0.3;
-              minLng = minLng - pad; maxLng = maxLng + pad;
-              minLat = minLat - pad; maxLat = maxLat + pad;
-            } else {
-              const [lng, lat] = feature.geometry.coordinates;
-              const pad = 0.5;
-              minLng = lng - pad; maxLng = lng + pad;
-              minLat = lat - pad; maxLat = lat + pad;
-            }
-            setSearchBounds([minLng, minLat, maxLng, maxLat]);
+            const newBounds = feature.properties.bbox
+              ? padBounds(feature.properties.bbox as [number, number, number, number], BBOX_PAD)
+              : boundsFromPoint(feature.geometry.coordinates[0], feature.geometry.coordinates[1], SEARCH_PAD);
+            setSearchBounds(newBounds);
 
-            // Filter the map to only show counties within this bounding box
-            if (mapInstance) {
-              mapInstance.setFilter("big info", ["within", {
-                type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [minLng, minLat],
-                    [maxLng, minLat],
-                    [maxLng, maxLat],
-                    [minLng, maxLat],
-                    [minLng, minLat],
-                  ]],
-                },
-              }]);
+            // Keep the map filtered by any already-active filters, combined
+            // with the new search area — otherwise a second search silently
+            // drops whatever price/income/population filter was applied.
+            if (filtersApplied) {
+              updateMapFilter(newBounds);
+            } else if (mapInstance) {
+              mapInstance.setFilter("big info", buildBoundsFilter(newBounds));
             }
+
+            // Refresh Top Picks for this new search, scoped to the searched area
+            fetchRecommendations(newBounds);
           }}
           placeholder="Search for counties in Georgia"
           options={{
@@ -274,11 +345,15 @@ function MapPage() {
           }}
         />
 
-        <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
+        <button onClick={() => navigate("/")} className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
+          Home
+        </button>
+
+        <button onClick={() => setShowFilters(!showFilters)} className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
           Filters
         </button>
 
-        <button onClick={() => navigate("/favorites")} className="bg-white px-3 py-1 rounded">
+        <button onClick={() => navigate("/favorites")} className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800">
           Favorites
         </button>
       </div>
@@ -294,7 +369,7 @@ function MapPage() {
               onClick={() => setPopulation("urban")}
               className={
                 population === "urban"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                  ? "w-20 h-10 rounded-lg bg-black text-white"
                   : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
               }
             >
@@ -304,7 +379,7 @@ function MapPage() {
               onClick={() => setPopulation("suburban")}
               className={
                 population === "suburban"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                  ? "w-20 h-10 rounded-lg bg-black text-white"
                   : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
               }
             >
@@ -314,7 +389,7 @@ function MapPage() {
               onClick={() => setPopulation("rural")}
               className={
                 population === "rural"
-                  ? "w-20 h-10 rounded-lg bg-blue-600 text-white"
+                  ? "w-20 h-10 rounded-lg bg-black text-white"
                   : "w-20 h-10 rounded-lg bg-gray-300 hover:bg-gray-400"
               }
             >
@@ -353,7 +428,7 @@ function MapPage() {
 
           <button
             onClick={applyFilters}
-            className="mt-6 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700"
+            className="mt-6 w-full bg-black text-white py-2 rounded-lg hover:bg-gray-800"
           >
             Apply Filters
           </button>
@@ -368,16 +443,16 @@ function MapPage() {
       )}
 
       {recommendations.length > 0 && (
-        <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-white overflow-y-auto p-4 z-10">
+        <div className="absolute top-0 right-0 h-full w-[clamp(260px,25vw,420px)] bg-black text-white overflow-y-auto p-4 z-10">
           <h2 className="text-lg font-medium mb-4">Top Picks</h2>
           {recommendations.map((r, i) => (
             <div
               key={r.areaName}
-              className="border-b py-3 cursor-pointer"
+              className="border-b border-gray-700 py-3 cursor-pointer hover:bg-gray-900"
               onClick={() => flyToCounty(r.areaName)}
             >
               <div className="font-medium">#{i + 1} {r.areaName} — {r.score} ({r.grade})</div>
-              <ul className="text-sm text-gray-600 list-disc pl-4">
+              <ul className="text-sm text-white list-disc pl-4">
                 {r.recommendationReason.strengths.map((reason, j) => (
                   <li key={`strength-${j}`}>{reason}</li>
                 ))}
@@ -402,21 +477,13 @@ function MapPage() {
           const searchLat = Number(searchParams.get("lat"));
           const searchLng = Number(searchParams.get("lng"));
           if (searchLat && searchLng && map) {
-            const pad = 0.5;
+            map.flyTo({ center: [searchLng, searchLat], zoom: 10 });
+
+            // Note: Top Picks for this search is handled by a separate effect
+            // below, since it needs mapAreas to be loaded first (see comment there).
+            const bounds = boundsFromPoint(searchLng, searchLat, SEARCH_PAD);
             map.once("idle", () => {
-              map.setFilter("big info", ["within", {
-                type: "Feature",
-                geometry: {
-                  type: "Polygon",
-                  coordinates: [[
-                    [searchLng - pad, searchLat - pad],
-                    [searchLng + pad, searchLat - pad],
-                    [searchLng + pad, searchLat + pad],
-                    [searchLng - pad, searchLat + pad],
-                    [searchLng - pad, searchLat - pad],
-                  ]],
-                },
-              }]);
+              map.setFilter("big info", buildBoundsFilter(bounds));
             });
           }
         }}
@@ -442,7 +509,7 @@ function MapPage() {
               <p>Median Rent: ${popupInfo.medianRent.toLocaleString()}</p>
               <p>Home Value: ${popupInfo.medianHomeValue.toLocaleString()}</p>
               <p>Median Income: ${popupInfo.medianIncome.toLocaleString()}</p>
-              <button onClick={saveToFavorites} className="border rounded-lg p-2">
+              <button onClick={saveToFavorites} className="bg-black text-white rounded-lg p-2 hover:bg-gray-600 active:bg-gray-400 active:scale-95 transition-colors">
                 Favorite
               </button>
             </div>
@@ -451,16 +518,23 @@ function MapPage() {
         )}
       </Map>
 
-      <div className="w-[clamp(200px,50vw,500px)]"
+      <div className="w-[clamp(200px,50vw,500px)]">
+      <div
         style={{
           position: "absolute",
-          bottom: 10,
-          left: 300,
+          bottom: 40,
+          left: 10,
+          width: "fit-content",
+          maxWidth: recommendations.length > 0
+            ? "calc(100% - clamp(260px, 25vw, 420px) - 20px)"
+            : "calc(100% - 20px)",
           zIndex: 1,
           display: "flex",
-          gap: "30px",
+          flexWrap: "wrap",
+          gap: "16px",
           background: "white",
           border: 5,
+          borderRadius: 12,
           padding: 7,
         }}
       >
@@ -501,6 +575,7 @@ function MapPage() {
           High School Graduation Rate
         </label>
 
+        </div>
         {/* 
          <button onClick={() => setShowFilters(!showFilters)} className="bg-white px-3 py-1 rounded">
           Population
@@ -573,6 +648,7 @@ function MapPage() {
             style={{ borderRadius: '8px' }}
           />
         )}
+      </div>
       </div>
     </div>
   );
