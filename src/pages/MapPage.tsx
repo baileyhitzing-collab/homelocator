@@ -88,7 +88,7 @@ function MapPage() {
   const navigate = useNavigate();
 
   // Read lat/lng from the URL (set by the search on HomePage)
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const lat = Number(searchParams.get("lat")) || 32.99815;
   const lng = Number(searchParams.get("lng")) || -83.51424;
 
@@ -326,6 +326,7 @@ function MapPage() {
           onClear={() => {
             // Clearing the search box resets scoping back to statewide
             setSearchBounds(null);
+            setSearchParams({});
             if (mapInstance) {
               mapInstance.setFilter("big info", null);
             }
@@ -333,12 +334,14 @@ function MapPage() {
           }}
           onRetrieve={(result) => {
             const feature = result.features[0];
+            const [lng, lat] = feature.geometry.coordinates;
 
             // Use the result's bounding box if available, otherwise build one from the center point
             const newBounds = feature.properties.bbox
               ? padBounds(feature.properties.bbox as [number, number, number, number], BBOX_PAD)
-              : boundsFromPoint(feature.geometry.coordinates[0], feature.geometry.coordinates[1], SEARCH_PAD);
+              : boundsFromPoint(lng, lat, SEARCH_PAD);
             setSearchBounds(newBounds);
+            setSearchParams({ lat: String(lat), lng: String(lng) });
 
             // Keep the map filtered by any already-active filters, combined
             // with the new search area — otherwise a second search silently
