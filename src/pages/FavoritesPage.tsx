@@ -18,6 +18,7 @@ function FavoritesPage() {
     localStorage.setItem("favorites", JSON.stringify(updated));
   }
 
+  // Show a simple empty state if no counties have been favorited yet
   if (favorites.length === 0) {
     return (
       <div className="min-h-screen bg-white flex flex-col">
@@ -46,6 +47,7 @@ function FavoritesPage() {
     );
   }
 
+  // Otherwise show the list of saved counties
   return (
     <div className="min-h-screen bg-white">
       <NavBar />
@@ -68,6 +70,7 @@ function FavoritesPage() {
           </div>
         </div>
 
+        {/* One card per saved county, with its stats and a Remove button */}
         {favorites.map((county, index) => (
           <div key={index} className="bg-white rounded-xl p-6 shadow-md mb-4">
             <h2 className="text-2xl font-medium mb-2">{county.county}</h2>

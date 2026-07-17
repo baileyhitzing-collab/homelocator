@@ -497,7 +497,7 @@ function MapPage() {
             map.flyTo({ center: [searchLng, searchLat], zoom: 10 });
 
             // Note: Top Picks for this search is handled by a separate effect
-            // below, since it needs mapAreas to be loaded first (see comment there).
+            // below, since it needs mapAreas to be loaded first.
             const bounds = boundsFromPoint(searchLng, searchLat, SEARCH_PAD);
             map.once("idle", () => {
               map.setFilter("big info", buildBoundsFilter(bounds));
