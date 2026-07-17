@@ -118,7 +118,7 @@ function MapPage() {
 
   // Choropleth interaction and associated legends
   const [activeLayer, setActiveLayer] = useState("Clear");
-  const [activeLine, setActiveLine] = useState("baseLine");
+  const [, setActiveLine] = useState("baseLine");
 
   const [activeLeg, setActiveLeg] = useState("none");
   // const handleLegend = (event) => {
@@ -550,7 +550,6 @@ function MapPage() {
           gap: "16px",
           background: "white",
           border: 5,
-          borderRadius: 12,
           padding: 7,
           borderRadius: 8,
         }}
